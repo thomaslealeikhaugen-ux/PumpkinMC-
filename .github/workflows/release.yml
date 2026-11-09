@@ -33,6 +33,9 @@ jobs:
             rustflags: -C target-cpu=x86-64-v3
           - os: ubuntu-26.04-arm
             arch: ARM64
+          - os: ubuntu-26.04-arm
+            arch: ARM64-musl
+            target: aarch64-unknown-linux-musl
           - os: windows-latest
             arch: X64
           - os: windows-latest
@@ -49,14 +52,22 @@ jobs:
         with:
           submodules: recursive
 
-      - run: rustup update stable && rustup default stable
+      - name: Install Rust
+        shell: bash
+        run: |
+          rustup update stable && rustup default stable
+          if [ -n "${{ matrix.target }}" ]; then rustup target add ${{ matrix.target }}; fi
+
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.arch }}
 
       - name: Build Release
         shell: bash
-        run: cargo build --verbose --release
+        run: |
+          TARGET_FLAG=""
+          if [ -n "${{ matrix.target }}" ]; then TARGET_FLAG="--target ${{ matrix.target }}"; fi
+          cargo build --verbose --release $TARGET_FLAG
 
       - name: Prepare artifacts
         shell: bash
@@ -64,7 +75,11 @@ jobs:
           mkdir -p dist
           EXT=""
           if [ "${{ runner.os }}" == "Windows" ]; then EXT=".exe"; fi
-          cp "target/release/pumpkin$EXT" "dist/pumpkin-${{ matrix.arch }}-${{ runner.os }}$EXT"
+          
+          SOURCE_PATH="target/release/pumpkin$EXT"
+          if [ -n "${{ matrix.target }}" ]; then SOURCE_PATH="target/${{ matrix.target }}/release/pumpkin$EXT"; fi
+          
+          cp "$SOURCE_PATH" "dist/pumpkin-${{ matrix.arch }}-${{ runner.os }}$EXT"
 
       - name: Upload unsigned Windows executable
         if: runner.os == 'Windows'
