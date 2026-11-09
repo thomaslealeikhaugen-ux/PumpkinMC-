@@ -225,3 +225,6 @@ jobs:
             dist/pumpkin*
             dist/checksums.sha256
           generate_release_notes: true
+
+          # test activatie
+
