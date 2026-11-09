@@ -52,11 +52,21 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install Rust
+      - name: Install Rust and Musl Dependencies
         shell: bash
         run: |
+          sudo apt-get update
+          # Installeer de specifieke musl compiler voor ARM64/AArch64
+          sudo apt-get install -y musl-tools musl-dev gcc-aarch64-linux-gnu
           rustup update stable && rustup default stable
-          if [ -n "${{ matrix.target }}" ]; then rustup target add ${{ matrix.target }}; fi
+          if [ -n "${{ matrix.target }}" ]; then 
+            rustup target add ${{ matrix.target }}
+            # Vertel Cargo welke linker hij moet gebruiken voor deze specifieke target
+            mkdir -p .cargo
+            echo '[target.aarch64-unknown-linux-musl]' > .cargo/config.toml
+            echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config.toml
+            echo 'rustflags = ["-C", "target-feature=+crt-static"]' >> .cargo/config.toml
+          fi
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -225,6 +235,3 @@ jobs:
             dist/pumpkin*
             dist/checksums.sha256
           generate_release_notes: true
-
-          # test activatie
-
